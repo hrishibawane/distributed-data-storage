@@ -13,11 +13,11 @@
 
 using namespace std;
 
-#define MAX_BUFFER_SIZE	0xFFFF
-#define MAX_CLIENTS		50
-#define MAX_LEN			15
-#define LOGERR			printf
-#define LOGINFO			printf
+#define MAX_BUFFER_SIZE		0xFFFF
+#define MAX_CLIENTS			50
+#define MAX_LEN				15
+#define LOGERR				printf
+#define LOGINFO				printf
 
 
 struct sockaddr_in serverAddress;
@@ -65,7 +65,7 @@ void sendToAllClients()
 int main(int argc, char* args[])
 {
 	memset(clientFD, 0, sizeof(int));
-	bzero(&buffer, MAX_BUFFER_SIZE);
+	bzero(buffer, MAX_BUFFER_SIZE);
 
 	try
 	{
@@ -101,7 +101,10 @@ int main(int argc, char* args[])
 	while (1)
 	{
 		FD_ZERO(&readFD);					// clear read socket set
+		FD_ZERO(&writeFD);
 		FD_SET(tcpListenFD, &readFD);		// add tcpListen to read set
+		FD_SET(tcpListenFD, &writeFD);
+		bzero(buffer, MAX_BUFFER_SIZE);
 
 		int maxSocketDesc = tcpListenFD;
 		int socketDesc = 0;
@@ -174,14 +177,15 @@ int main(int argc, char* args[])
 				else
 				{
 					buffer[readBytes] = '\0';
+					LOGINFO("%s", buffer);
 					sendToAllClients();
-					bzero(&buffer, MAX_BUFFER_SIZE);
+					bzero(buffer, MAX_BUFFER_SIZE);
 				}
 			}
 		}
 
 	}
-
+	return EXIT_SUCCESS;
 }
 
 
