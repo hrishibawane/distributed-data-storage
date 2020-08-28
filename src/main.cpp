@@ -126,9 +126,4 @@ int Socket::GetPeerName(int socketFD)
 	}
 	return peerNameStatus;
 }
-	
-int main()
-{
-	printf("Hello World\n");
-}
 

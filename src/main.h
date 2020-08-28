@@ -21,7 +21,6 @@ class Socket
 
 private:
 
-	sockaddr_in serverAddress;
 	int sockPort;
 	char ipAddress[LEN];
 
@@ -36,6 +35,8 @@ private:
 	socklen_t serverLen;
 
 public:
+	
+	sockaddr_in serverAddress;
 
 	Socket();
 
