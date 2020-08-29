@@ -12,7 +12,7 @@ using namespace std;
 
 Socket::Socket() {}
 
-Socket::Socket(const char* ip, const int port)
+Socket::Socket(const char* ip, const int port, const int type)
 {
 	strcpy(ipAddress, ip);
 	sockPort = port;
@@ -27,7 +27,7 @@ Socket::Socket(const char* ip, const int port)
 	peerNameStatus = 0;
 
 	serverAddress.sin_family = AF_INET;
-	serverAddress.sin_addr.s_addr = INADDR_ANY;
+	serverAddress.sin_addr.s_addr = (type == 0) ? INADDR_ANY : inet_addr(ipAddress);
 	serverAddress.sin_port = htons(sockPort);
 	serverLen = sizeof(serverAddress);
 }
@@ -126,9 +126,9 @@ int Socket::GetPeerName(int socketFD)
 	}
 	return peerNameStatus;
 }
-	
-int main()
+
+Socket::~Socket()
 {
-	printf("Hello World\n");
+	close(sockFileDesc);
 }
 

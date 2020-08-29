@@ -1,20 +1,21 @@
 # Makefile
 
-all:
-	g++ server.cpp -o server
-	g++ client.cpp -o client -lpthread
+all: program
 
-server:
-	g++ server.cpp -o server
+program: main.o server.o client.o
+	g++ main.o server.o -o server
+	g++ main.o client.o -lpthread -o client
 
-client:
-	g++ client.cpp -o client -lpthread
+main.o:
+	g++ -c main.cpp
 
-clean-all:
+server.o:
+	g++ -c server.cpp
+
+client.o:
+	g++ -c client.cpp
+
+clean:
+	rm -rf *.o
 	rm -rf server client
 
-clean-server:
-	rm -rf server
-
-clean-client:
-	rm -rf client
