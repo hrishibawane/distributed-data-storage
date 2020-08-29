@@ -3,17 +3,12 @@
 	Author: Hrishikesh Bawane
 */
 
-#include <iostream>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <string.h>
+#include "main.h"
 
 using namespace std;
 
-#define MAX_BUFFER_SIZE	0xFFFF
-#define MAX_CLIENTS		50
+#define MAX_BUFFER_SIZE	65536
+#define MAX_CLIENTS		100
 #define MAX_LEN			100
 #define LOGERR			printf
 #define LOGINFO			printf
@@ -25,25 +20,15 @@ const char serverIP[] = "127.0.0.1";
 const int port = 3000;
 struct sockaddr_in serverAddress;
 
-int socketFD = 0;
-int connStatus = 0;
+int tcpSocketFD = 0;
 int recvBytes = 0;
-int selectStatus = 0;
 char buffer[MAX_BUFFER_SIZE];
-char data[MAX_LEN];
+char data[MAX_BUFFER_SIZE];
+char fileName[MAX_LEN];
 
-const char connectionError[][MAX_LEN] = {"socket()", "connect()", "send()", "select()"};
 volatile bool exitFlag = FALSE;
 
 //////////////////////////////////////////////////////////////////////////
-
-void logErrors(int code)
-{
-	LOGERR("ERROR: %s\n", connectionError[code]);
-	exit(EXIT_FAILURE);
-}
-
-////////////////////////////////////////////////////////////////////////
 
 void catchExitCondition()
 {
@@ -63,22 +48,34 @@ void flushStdout()
 void* dataSendHandler(void* args)
 {
 	bzero(buffer, MAX_BUFFER_SIZE);
-	bzero(data, MAX_LEN);
+	bzero(fileName, MAX_LEN);
 
 	while (1)
 	{
 		flushStdout();
-		fgets(buffer, MAX_LEN, stdin);
-		if (strcmp(buffer, "exit\n") == 0)
+		scanf("%s", fileName);
+		if (strcmp(fileName, "exit") == 0)
 		{
 			break;
 		}
 		else 
 		{
-			send(socketFD, buffer, strlen(buffer), 0);
+			FILE* filePtr = fopen(fileName, "r+");
+			if (filePtr == NULL)
+			{
+				LOGERR("Error: fopen()\n");
+				exit(EXIT_FAILURE);
+			}
+			char tmpBuffer[MAX_BUFFER_SIZE];
+			fread(tmpBuffer, MAX_BUFFER_SIZE, 1, filePtr);
+			strcpy(buffer, fileName);
+			strcat(buffer, "\n");
+			strcat(buffer, tmpBuffer);
+			send(tcpSocketFD, buffer, strlen(buffer), 0);
+			fclose(filePtr);
 		}
 		bzero(buffer, MAX_BUFFER_SIZE);
-		bzero(data, MAX_LEN);
+		bzero(fileName, MAX_LEN);
 	}
 	catchExitCondition();
 }
@@ -88,19 +85,36 @@ void* dataSendHandler(void* args)
 void* dataReceiveHandler(void* args)
 {
 	bzero(buffer, MAX_BUFFER_SIZE);
-	
+	bzero(data, MAX_BUFFER_SIZE);
+	bzero(fileName, MAX_LEN);
+
 	while (1)
 	{
-		recvBytes = recv(socketFD, buffer, MAX_BUFFER_SIZE, 0);
+		recvBytes = recv(tcpSocketFD, buffer, MAX_BUFFER_SIZE, 0);
 		if (recvBytes > 0)
 		{
-			LOGINFO("%s", buffer);
+			int len = 0;
+			while (buffer[len++] != '\n');
+			snprintf(fileName, len, "%s", buffer);
+			strcpy(data, buffer + len);
+			LOGINFO("Data Received: %s\n", data);
+			FILE* filePtr = fopen(fileName, "w+");
+			if (filePtr == NULL)
+			{
+				LOGERR("Error: fopen()\n");
+				exit(EXIT_FAILURE);
+			}
+			fprintf(filePtr, "%s", data);
 			flushStdout();
+			fclose(filePtr);
 		}
 		else if (recvBytes == 0)
 		{
 			break;
 		}
+		bzero(buffer, MAX_BUFFER_SIZE);
+		bzero(data, MAX_BUFFER_SIZE);
+		bzero(fileName, MAX_LEN);
 	}
 }
 
@@ -109,31 +123,14 @@ void* dataReceiveHandler(void* args)
 int main(int argc, char** argv)
 {
 	bzero(buffer, MAX_BUFFER_SIZE);
-
-	try
-	{
-		socketFD = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (socketFD == -1)
-		{
-			throw 0;
-		}
-		
-		serverAddress.sin_family = AF_INET;
-		serverAddress.sin_addr.s_addr = inet_addr(serverIP);
-		serverAddress.sin_port = htons(port);
-
-		connStatus = connect(socketFD, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
-		if (connStatus == -1)
-		{
-			throw 1;
-		}
-	}
-	catch (int code)
-	{
-		logErrors(code);
-	}
-
-	recv(socketFD, buffer, MAX_BUFFER_SIZE, 0);
+	
+	Socket sockClient(serverIP, port, 1);
+	
+	tcpSocketFD = sockClient.Create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	
+	sockClient.Connect();
+	
+	sockClient.Receive(tcpSocketFD, buffer, MAX_BUFFER_SIZE, 0);
 	LOGINFO("%s", buffer);
 
 	pthread_t dataSendThread;
@@ -150,18 +147,8 @@ int main(int argc, char** argv)
 			break;
 		}
 	}
-	close(socketFD);
+	close(tcpSocketFD);
 	
 	return EXIT_SUCCESS;
 }
-
-
-
-
-
-
-
-
-
-
 

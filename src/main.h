@@ -5,10 +5,12 @@
 
 #include <iostream>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <string.h>
 #include <unistd.h>
+#include <map>
 using namespace std;
 
 #ifndef MAIN_H
@@ -40,7 +42,7 @@ public:
 
 	Socket();
 
-	Socket(const char*, const int);
+	Socket(const char*, const int, const int);
 	
 	int Create(int, int, int);
 
@@ -61,6 +63,8 @@ public:
 	ssize_t Write(int, const void*, size_t);
 
 	int GetPeerName(int);
+
+	~Socket();
 };
 
 #endif

@@ -3,18 +3,11 @@
 	Author: Hrishikesh Bawane
 */
 
-#include <iostream>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <string.h>
 #include "main.h"
 
 using namespace std;
 
-#define MAX_BUFFER_SIZE	10000
+#define MAX_BUFFER_SIZE	65536
 #define MAX_CLIENTS		100
 #define LOGERR			printf
 #define LOGINFO			printf
@@ -32,13 +25,13 @@ const char successMsg[] = "You have successfully connected to server...\n";
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void sendToAllClients(Socket& sockObj)
+void sendToAllClients(Socket& sockServer)
 {
 	for (int nClient = 0; nClient < MAX_CLIENTS; nClient++)
 	{
 		if (clientFD[nClient] != 0)
 		{
-			sockObj.Send(clientFD[nClient], buffer, strlen(buffer), 0);
+			sockServer.Send(clientFD[nClient], buffer, strlen(buffer), 0);
 		}
 	}
 }
@@ -50,10 +43,10 @@ int main(int argc, char* args[])
 	memset(clientFD, 0, sizeof(int));
 	bzero(buffer, MAX_BUFFER_SIZE);
 
-	Socket sockObj(ipAddress, port);
-	tcpListenFD = sockObj.Create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	sockObj.Bind();
-	sockObj.Listen(MAX_CLIENTS);
+	Socket sockServer(ipAddress, port, 0);
+	tcpListenFD = sockServer.Create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	sockServer.Bind();
+	sockServer.Listen(MAX_CLIENTS);
 
 	LOGINFO("Server ready on port %d....\n", port);
 
@@ -81,11 +74,11 @@ int main(int argc, char* args[])
 		// Incoming connection
 		if (FD_ISSET(tcpListenFD, &readFD))
 		{
-			int newConnection = sockObj.Accept();
+			int newConnection = sockServer.Accept();
 
 			LOGINFO("New Connection:\t socket fd: %d\n", newConnection);
 
-			sockObj.Send(newConnection, successMsg, strlen(successMsg), 0);
+			sockServer.Send(newConnection, successMsg, strlen(successMsg), 0);
 
 			LOGINFO("Welcome message sent successfully\n");
 			
@@ -107,10 +100,10 @@ int main(int argc, char* args[])
 			if (FD_ISSET(socketDesc, &readFD))
 			{
 				// Check if incoming message or client is disconnecting
-				readBytes = sockObj.Read(socketDesc, buffer, MAX_BUFFER_SIZE);
+				readBytes = sockServer.Read(socketDesc, buffer, MAX_BUFFER_SIZE);
 				if (readBytes == 0)
 				{
-					sockObj.GetPeerName(socketDesc);
+					sockServer.GetPeerName(socketDesc);
 					LOGINFO("Client Disconnected:\t ID: %d\t sockfd: %d\n", nClient, socketDesc);
 					close(socketDesc);
 					clientFD[nClient] = 0;
@@ -118,7 +111,7 @@ int main(int argc, char* args[])
 				else
 				{
 					LOGINFO("Client %d: %s", nClient, buffer);
-					sendToAllClients(sockObj);
+					sendToAllClients(sockServer);
 					bzero(buffer, MAX_BUFFER_SIZE);
 				}
 			}
