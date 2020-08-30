@@ -4,13 +4,18 @@
 */
 
 #include "main.h"
+#include <map>
+#include <vector>
 
 using namespace std;
 
 #define MAX_BUFFER_SIZE	65536
 #define MAX_CLIENTS		100
+#define MAX_LEN			100
 #define LOGERR			printf
 #define LOGINFO			printf
+#define TRUE			true
+#define FALSE			false
 
 fd_set readFD;
 fd_set writeFD;
@@ -21,19 +26,52 @@ int tcpListenFD = 0;
 int clientFD[MAX_CLIENTS];
 int readBytes = 0;
 char buffer[MAX_BUFFER_SIZE];
+char data[MAX_BUFFER_SIZE];
+char fileName[MAX_LEN];
 const char successMsg[] = "You have successfully connected to server...\n";
+
+map<string, int> fileLoc;
+multimap<int, in_addr_t> locTable;
+int currClients[MAX_CLIENTS];
 
 ////////////////////////////////////////////////////////////////////////////////
 
 void sendToAllClients(Socket& sockServer)
 {
-	for (int nClient = 0; nClient < MAX_CLIENTS; nClient++)
+	bzero(data, MAX_BUFFER_SIZE);
+	bzero(fileName, MAX_LEN);
+	int len = 0;
+	int cClients = 0;
+
+	while (buffer[len++] != '\n');
+	snprintf(fileName, len, "%s", buffer);
+	strcpy(data, buffer + len);
+
+	for (int nCli = 0; nCli < MAX_CLIENTS; nCli++)
 	{
-		if (clientFD[nClient] != 0)
+		if (clientFD[nCli] != 0)
 		{
-			sockServer.Send(clientFD[nClient], buffer, strlen(buffer), 0);
+			currClients[cClients++] = clientFD[nCli];
 		}
 	}
+
+	LOGINFO("Current clients: %d\n", cClients);
+	int block = strlen(data) / cClients;
+	int curr = 0;
+
+	for (int nCli = 0; nCli < cClients; nCli++)
+	{
+		// send data
+		char tBuffer[MAX_BUFFER_SIZE];
+		strncpy(tBuffer, data + curr, block);
+		sockServer.Send(currClients[nCli], tBuffer, strlen(tBuffer), 0);
+		curr += block;
+		LOGINFO("Sent to %d: %s\n", currClients[nCli], tBuffer);
+		bzero(tBuffer, MAX_BUFFER_SIZE);
+	}
+	bzero(buffer, MAX_BUFFER_SIZE);
+	bzero(data, MAX_BUFFER_SIZE);
+	bzero(fileName, MAX_LEN);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,6 +79,7 @@ void sendToAllClients(Socket& sockServer)
 int main(int argc, char* args[])
 {
 	memset(clientFD, 0, sizeof(int));
+	memset(currClients, 0, sizeof(int));
 	bzero(buffer, MAX_BUFFER_SIZE);
 
 	Socket sockServer(ipAddress, port, 0);
@@ -112,7 +151,6 @@ int main(int argc, char* args[])
 				{
 					LOGINFO("Client %d: %s", nClient, buffer);
 					sendToAllClients(sockServer);
-					bzero(buffer, MAX_BUFFER_SIZE);
 				}
 			}
 		}
