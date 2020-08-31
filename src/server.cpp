@@ -63,7 +63,9 @@ void sendToAllClients(Socket& sockServer)
 	{
 		// send data
 		char tBuffer[MAX_BUFFER_SIZE];
-		strncpy(tBuffer, data + curr, block);
+		strcpy(tBuffer, fileName);
+		strcat(tBuffer, "\n");
+		strncat(tBuffer, data + curr, block);
 		sockServer.Send(currClients[nCli], tBuffer, strlen(tBuffer), 0);
 		curr += block;
 		LOGINFO("Sent to %d: %s\n", currClients[nCli], tBuffer);

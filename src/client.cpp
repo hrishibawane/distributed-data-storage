@@ -84,15 +84,21 @@ void* dataSendHandler(void* args)
 
 void* dataReceiveHandler(void* args)
 {
+	bzero(buffer, MAX_BUFFER_SIZE);
 	bzero(data, MAX_BUFFER_SIZE);
 	bzero(fileName, MAX_LEN);
 	while (1)
 	{
-		recvBytes = recv(tcpSocketFD, data, MAX_BUFFER_SIZE, 0);
+		recvBytes = recv(tcpSocketFD, buffer, MAX_BUFFER_SIZE, 0);
 		if (recvBytes > 0)
-		{	
+		{
+			int len = 0;
+			while (buffer[len++] != '\n');
+			snprintf(fileName, len, "%s", buffer);
+			strcpy(data, buffer + len);
+			LOGINFO("File Received: %s\n", fileName);
 			LOGINFO("Data Received: %s\n", data);
-			FILE* filePtr = fopen("../data/rfile.txt", "w+");
+			FILE* filePtr = fopen(fileName, "w+");
 			if (filePtr == NULL)
 			{
 				LOGERR("Error: fopen()\n");
@@ -106,6 +112,7 @@ void* dataReceiveHandler(void* args)
 		{
 			break;
 		}
+		bzero(buffer, MAX_BUFFER_SIZE);
 		bzero(data, MAX_BUFFER_SIZE);
 		bzero(fileName, MAX_LEN);
 	}
