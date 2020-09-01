@@ -4,6 +4,7 @@
 */
 
 #include "main.h"
+#include <netdb.h>
 
 using namespace std;
 
@@ -19,6 +20,8 @@ using namespace std;
 const char serverIP[] = "127.0.0.1";
 const int port = 3000;
 struct sockaddr_in serverAddress;
+struct hostent* clientDetails;
+char clientBuffer[MAX_LEN];
 
 int tcpSocketFD = 0;
 int recvBytes = 0;
@@ -132,6 +135,11 @@ int main(int argc, char** argv)
 	
 	sockClient.Receive(tcpSocketFD, buffer, MAX_BUFFER_SIZE, 0);
 	LOGINFO("%s", buffer);
+	
+	gethostname(clientBuffer, sizeof(clientBuffer));
+	clientDetails = gethostbyname(clientBuffer);
+	char* clientIP = inet_ntoa(*((in_addr*)clientDetails->h_addr_list[0]));
+	sockClient.Send(tcpSocketFD, clientIP, strlen(clientIP), 0);
 
 	pthread_t dataSendThread;
 	pthread_create(&dataSendThread, NULL, &dataSendHandler, NULL);

@@ -17,22 +17,28 @@ using namespace std;
 #define TRUE			true
 #define FALSE			false
 
+typedef struct
+{
+	int sockFD;
+	char IP[MAX_LEN];
+} Client;
+
 fd_set readFD;
 fd_set writeFD;
 const char ipAddress[] = "0.0.0.0";
 const int port = 3000;
 
 int tcpListenFD = 0;
-int clientFD[MAX_CLIENTS];
+Client* clients[MAX_CLIENTS];
 int readBytes = 0;
 char buffer[MAX_BUFFER_SIZE];
 char data[MAX_BUFFER_SIZE];
 char fileName[MAX_LEN];
+char hostIP[MAX_LEN];
 const char successMsg[] = "You have successfully connected to server...\n";
 
-map<string, int> fileLoc;
-multimap<int, in_addr_t> locTable;
-int currClients[MAX_CLIENTS];
+map<string, vector<string>> locTable;
+Client* currClients[MAX_CLIENTS];
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -49,9 +55,9 @@ void sendToAllClients(Socket& sockServer)
 
 	for (int nCli = 0; nCli < MAX_CLIENTS; nCli++)
 	{
-		if (clientFD[nCli] != 0)
+		if (clients[nCli] != NULL)
 		{
-			currClients[cClients++] = clientFD[nCli];
+			currClients[cClients++] = clients[nCli];
 		}
 	}
 
@@ -66,9 +72,11 @@ void sendToAllClients(Socket& sockServer)
 		strcpy(tBuffer, fileName);
 		strcat(tBuffer, "\n");
 		strncat(tBuffer, data + curr, block);
-		sockServer.Send(currClients[nCli], tBuffer, strlen(tBuffer), 0);
+		sockServer.Send(currClients[nCli]->sockFD, tBuffer, strlen(tBuffer), 0);
 		curr += block;
-		LOGINFO("Sent to %d: %s\n", currClients[nCli], tBuffer);
+		string fName(fileName);
+		locTable[fName].push_back(currClients[nCli]->IP);
+		LOGINFO("Sent to %d: %s\n", currClients[nCli]->sockFD, tBuffer);
 		bzero(tBuffer, MAX_BUFFER_SIZE);
 	}
 	bzero(buffer, MAX_BUFFER_SIZE);
@@ -80,7 +88,6 @@ void sendToAllClients(Socket& sockServer)
 
 int main(int argc, char* args[])
 {
-	memset(clientFD, 0, sizeof(int));
 	memset(currClients, 0, sizeof(int));
 	bzero(buffer, MAX_BUFFER_SIZE);
 
@@ -102,7 +109,7 @@ int main(int argc, char* args[])
 
 		for (int nClient = 0; nClient < MAX_CLIENTS; nClient++)
 		{
-			socketDesc = clientFD[nClient];
+			socketDesc = clients[nClient] == NULL ? 0 : clients[nClient]->sockFD;
 			if (socketDesc > 0)
 			{
 				FD_SET(socketDesc, &readFD);
@@ -120,23 +127,28 @@ int main(int argc, char* args[])
 			LOGINFO("New Connection:\t socket fd: %d\n", newConnection);
 
 			sockServer.Send(newConnection, successMsg, strlen(successMsg), 0);
-
 			LOGINFO("Welcome message sent successfully\n");
+
+			sockServer.Receive(newConnection, hostIP, MAX_LEN, 0);
+			LOGINFO("IP: %s\n", hostIP);
 			
 			for (int nClient = 0; nClient < MAX_CLIENTS; nClient++)
 			{
-				if (clientFD[nClient] == 0)
+				if (clients[nClient] == NULL)
 				{
-					clientFD[nClient] = newConnection;
+					clients[nClient] = new Client;
+					clients[nClient]->sockFD = newConnection;
+					strcpy(clients[nClient]->IP, hostIP);
 					LOGINFO("New Client added to list as %d\n", nClient);
 					break;
 				}
 			}
+			bzero(hostIP, MAX_LEN);
 		}
 
 		for (int nClient = 0; nClient < MAX_CLIENTS; nClient++)
 		{
-			socketDesc = clientFD[nClient];
+			socketDesc = clients[nClient] == NULL ? 0 : clients[nClient]->sockFD;
 
 			if (FD_ISSET(socketDesc, &readFD))
 			{
@@ -145,9 +157,9 @@ int main(int argc, char* args[])
 				if (readBytes == 0)
 				{
 					sockServer.GetPeerName(socketDesc);
-					LOGINFO("Client Disconnected:\t ID: %d\t sockfd: %d\n", nClient, socketDesc);
+					LOGINFO("Client Disconnected:\t ID: %d\t sockfd: %d\t IP: %s\n", nClient, socketDesc, clients[nClient]->IP);
 					close(socketDesc);
-					clientFD[nClient] = 0;
+					clients[nClient] = NULL;
 				}
 				else
 				{
