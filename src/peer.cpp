@@ -1,5 +1,5 @@
 /*
-	Client file
+	peer file
 	Author: Hrishikesh Bawane
 */
 
@@ -9,7 +9,7 @@
 using namespace std;
 
 #define MAX_BUFFER_SIZE	65536
-#define MAX_CLIENTS		100
+#define MAX_PEERS		100
 #define MAX_LEN			100
 #define LOGERR			printf
 #define LOGINFO			printf
@@ -20,8 +20,8 @@ using namespace std;
 const char serverIP[] = "127.0.0.1";
 const int port = 3000;
 struct sockaddr_in serverAddress;
-struct hostent* clientDetails;
-char clientBuffer[MAX_LEN];
+struct hostent* peerDetails;
+char peerBuffer[MAX_LEN];
 
 int tcpSocketFD = 0;
 int recvBytes = 0;
@@ -127,19 +127,19 @@ int main(int argc, char** argv)
 {
 	bzero(buffer, MAX_BUFFER_SIZE);
 	
-	Socket sockClient(serverIP, port, 1);
+	Socket sockPeer(serverIP, port, 1);
 	
-	tcpSocketFD = sockClient.Create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	tcpSocketFD = sockPeer.Create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	
-	sockClient.Connect();
+	sockPeer.Connect();
 	
-	sockClient.Receive(tcpSocketFD, buffer, MAX_BUFFER_SIZE, 0);
+	sockPeer.Receive(tcpSocketFD, buffer, MAX_BUFFER_SIZE, 0);
 	LOGINFO("%s", buffer);
 	
-	gethostname(clientBuffer, sizeof(clientBuffer));
-	clientDetails = gethostbyname(clientBuffer);
-	char* clientIP = inet_ntoa(*((in_addr*)clientDetails->h_addr_list[0]));
-	sockClient.Send(tcpSocketFD, clientIP, strlen(clientIP), 0);
+	gethostname(peerBuffer, sizeof(peerBuffer));
+	peerDetails = gethostbyname(peerBuffer);
+	char* peerIP = inet_ntoa(*((in_addr*)peerDetails->h_addr_list[0]));
+	sockPeer.Send(tcpSocketFD, peerIP, strlen(peerIP), 0);
 
 	pthread_t dataSendThread;
 	pthread_create(&dataSendThread, NULL, &dataSendHandler, NULL);
