@@ -122,7 +122,7 @@ int Socket::GetPeerName(int socketFD)
 	peerNameStatus = getpeername(socketFD, (sockaddr*)&serverAddress, &serverLen);
 	if (peerNameStatus == -1)
 	{
-		LOGERR("Error: getpeername()");
+		LOGERR("Error: getpeername()\n");
 	}
 	return peerNameStatus;
 }

@@ -10,6 +10,8 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <unistd.h>
+#include <map>
+#include <vector>
 
 using namespace std;
 
@@ -22,10 +24,8 @@ class Socket
 {
 
 private:
-
 	int sockPort;
 	char ipAddress[LEN];
-
 	int sockFileDesc;
 	int sockBindStatus;
 	int sockConnectStatus;
@@ -37,7 +37,6 @@ private:
 	socklen_t serverLen;
 
 public:
-	
 	sockaddr_in serverAddress;
 
 	Socket();
@@ -67,4 +66,9 @@ public:
 	~Socket();
 };
 
+
 #endif
+
+
+
+

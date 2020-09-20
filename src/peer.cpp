@@ -1,5 +1,5 @@
 /*
-	peer file
+	Peer file
 	Author: Hrishikesh Bawane
 */
 
@@ -123,7 +123,7 @@ void* dataReceiveHandler(void* args)
 
 /////////////////////////////////////////////////////////////////////////
 
-int main(int argc, char** argv)
+int main(int argc, char* argv[])
 {
 	bzero(buffer, MAX_BUFFER_SIZE);
 	

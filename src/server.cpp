@@ -37,10 +37,22 @@ char fileName[MAX_LEN];
 char hostIP[MAX_LEN];
 const char successMsg[] = "You have successfully connected to server...\n";
 
-map<string, vector<string>> locTable;
 Peer* currPeers[MAX_PEERS];
+map<string, vector<string>> locTable;
 
 ////////////////////////////////////////////////////////////////////////////////
+
+void retrieveFile(Socket& sockServer, int clientID)
+{
+	bzero(buffer, MAX_BUFFER_SIZE);
+	bzero(data, MAX_BUFFER_SIZE);
+	bzero(fileName, MAX_LEN);
+	readBytes = sockServer.Read(peers[clientID]->sockFD, fileName, MAX_LEN);
+	printf("Filename: %s\n", fileName);
+	return;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 
 void sendToAllPeers(Socket& sockServer)
 {
@@ -68,7 +80,6 @@ void sendToAllPeers(Socket& sockServer)
 
 	for (int nCli = 0; nCli < cPeers; nCli++)
 	{
-		// send data
 		char tBuffer[MAX_BUFFER_SIZE];
 		strcpy(tBuffer, fileName);
 		strcat(tBuffer, "\n");
@@ -133,6 +144,7 @@ int main(int argc, char* args[])
 
 			LOGINFO("New Connection:\t socket fd: %d\n", newConnection);
 
+			// Handshake
 			sockServer.Send(newConnection, successMsg, strlen(successMsg), 0);
 			LOGINFO("Welcome message sent successfully\n");
 
@@ -146,7 +158,7 @@ int main(int argc, char* args[])
 					peers[nPeer] = new Peer;
 					peers[nPeer]->sockFD = newConnection;
 					strcpy(peers[nPeer]->IP, hostIP);
-					LOGINFO("New Peer added to list at %d:\t fd: %d\t ip: %s\n", nPeer, peers[nPeer]->sockFD, peers[nPeer]->IP);
+					LOGINFO("New Connection added to list at %d:\t fd: %d\t ip: %s\n", nPeer, peers[nPeer]->sockFD, peers[nPeer]->IP);
 					break;
 				}
 			}
@@ -168,9 +180,14 @@ int main(int argc, char* args[])
 					close(socketDesc);
 					peers[nPeer] = NULL;
 				}
+				else if (strcmp(buffer, "GET\n") == 0)
+				{
+					LOGINFO("Client %d requesting for file\n", nPeer);
+					retrieveFile(sockServer, nPeer);
+				}
 				else
 				{
-					LOGINFO("Peer %d: %s", nPeer, buffer);
+					LOGINFO("Peer %d sending file: %s\n", nPeer, buffer);
 					sendToAllPeers(sockServer);
 				}
 			}
