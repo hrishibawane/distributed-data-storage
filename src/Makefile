@@ -2,29 +2,35 @@
 
 all: program
 
-program: main.o server.o peer.o client.o
+program: main.o server.o peer.o
 	g++ main.o server.o -o server
 	g++ main.o peer.o -lpthread -o peer
-	g++ main.o client.o -lpthread -o client
-	cp -t ../bin/ server peer
-	rm *.o
+	mv server peer ../bin
+	rm -f *.o
+
+# Only for server
+server: main.o server.o
+	rm -f ../bin/server
+	g++ main.o server.o -o server
+	mv main.o server.o ../obj
+	mv server ../bin
+
+# Only for peer
+peer: main.o peer.o
+	rm -f ../bin/peer
+	g++ main.o peer.o -lpthread -o peer
+	mv main.o peer.o ../obj
+	mv peer ../bin
 
 main.o:
 	g++ -c main.cpp
-	cp main.o ../obj/
 
 server.o:
 	g++ -c server.cpp
-	cp server.o ../obj/
 
 peer.o:
 	g++ -c peer.cpp
-	cp peer.o ../obj/
-
-client.o:
-	g++ -c client.cpp
-	cp client.o ../obj/
 
 clean:
-	rm server client peer
+	rm -f ../bin
 
