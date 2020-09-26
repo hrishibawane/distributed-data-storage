@@ -1,17 +1,20 @@
 #!/bin/sh
 
+set -e
+
 type=$1
+pType=$2
 
 echo "Running $0..."
 
-if [ "$type" = "server" ]; then
-	echo "Compiling server..."
+if [ $type = "server" ]; then
+	echo "\nCompiling server..."
 	make server
-	echo "Running server..."
+	echo "\nRunning server..."
 	../bin/server
 else
-	echo "Compiling peer..."
+	echo "\nCompiling peer..."
 	make peer
-	echo "Running peer..."
-	../bin/peer
+	echo "\nRunning peer..."
+	../bin/peer $pType
 fi

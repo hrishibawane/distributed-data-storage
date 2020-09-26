@@ -50,6 +50,7 @@ void flushStdout()
 
 void* dataSendHandler(void* args)
 {
+	int pType = *((int*)args);
 	bzero(buffer, MAX_BUFFER_SIZE);
 	bzero(fileName, MAX_LEN);
 
@@ -61,21 +62,26 @@ void* dataSendHandler(void* args)
 		{
 			break;
 		}
-		else 
+		else
 		{
-			FILE* filePtr = fopen(fileName, "r+");
-			if (filePtr == NULL)
-			{
-				LOGERR("Error: fopen()\n");
-				exit(EXIT_FAILURE);
-			}
-			char tmpBuffer[MAX_BUFFER_SIZE];
-			fread(tmpBuffer, MAX_BUFFER_SIZE, 1, filePtr);
-			strcpy(buffer, fileName);
+			buffer[0] = (char)(pType + 48);
+			strcat(buffer, fileName);
 			strcat(buffer, "\n");
-			strcat(buffer, tmpBuffer);
+			if (pType == 0)
+			{
+				// Attach file to be sent
+				FILE* filePtr = fopen(fileName, "r+");
+				if (filePtr == NULL)
+				{
+					LOGERR("Error: fopen()\n");
+					exit(EXIT_FAILURE);
+				}
+				char tmpBuffer[MAX_BUFFER_SIZE];
+				fread(tmpBuffer, MAX_BUFFER_SIZE, 1, filePtr);
+				strcat(buffer, tmpBuffer);
+				fclose(filePtr);
+			}
 			send(tcpSocketFD, buffer, strlen(buffer), 0);
-			fclose(filePtr);
 		}
 		bzero(buffer, MAX_BUFFER_SIZE);
 		bzero(fileName, MAX_LEN);
@@ -125,28 +131,29 @@ void* dataReceiveHandler(void* args)
 
 int main(int argc, char* argv[])
 {
+	int pType = atoi(argv[1]);
 	bzero(buffer, MAX_BUFFER_SIZE);
-	
+
 	Socket sockPeer(serverIP, port, 1);
-	
+
 	tcpSocketFD = sockPeer.Create(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	
+
 	sockPeer.Connect();
-	
+
 	sockPeer.Receive(tcpSocketFD, buffer, MAX_BUFFER_SIZE, 0);
 	LOGINFO("%s", buffer);
-	
+
 	gethostname(peerBuffer, sizeof(peerBuffer));
 	peerDetails = gethostbyname(peerBuffer);
 	char* peerIP = inet_ntoa(*((in_addr*)peerDetails->h_addr_list[0]));
 	sockPeer.Send(tcpSocketFD, peerIP, strlen(peerIP), 0);
 
 	pthread_t dataSendThread;
-	pthread_create(&dataSendThread, NULL, &dataSendHandler, NULL);
+	pthread_create(&dataSendThread, NULL, &dataSendHandler, (void*)&pType);
 
 	pthread_t dataReceiveThread;
 	pthread_create(&dataReceiveThread, NULL, &dataReceiveHandler, NULL);
-	
+
 	while (1)
 	{
 		if (exitFlag)
@@ -156,7 +163,7 @@ int main(int argc, char* argv[])
 		}
 	}
 	close(tcpSocketFD);
-	
+
 	return EXIT_SUCCESS;
 }
 
