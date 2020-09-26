@@ -42,59 +42,56 @@ map<string, vector<string>> locTable;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void retrieveFile(Socket& sockServer, int clientID)
-{
-	bzero(buffer, MAX_BUFFER_SIZE);
-	bzero(data, MAX_BUFFER_SIZE);
-	bzero(fileName, MAX_LEN);
-	readBytes = sockServer.Read(peers[clientID]->sockFD, fileName, MAX_LEN);
-	printf("Filename: %s\n", fileName);
-	return;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void sendToAllPeers(Socket& sockServer)
+void peerInteraction(Socket& sockServer, int peerID)
 {
 	bzero(data, MAX_BUFFER_SIZE);
 	bzero(fileName, MAX_LEN);
 	int len = 0;
 	int cPeers = 0;
-
+	int pType = (int)(buffer[len++] - 48);
+	printf("\npType: %d\n", pType);
 	while (buffer[len++] != '\n');
-	snprintf(fileName, len, "%s", buffer);
-	strcpy(data, buffer + len);
-
-	for (int nCli = 0; nCli < MAX_PEERS; nCli++)
+	snprintf(fileName, len, "%s", buffer + 1);
+	
+	if (pType == 0)
 	{
-		if (peers[nCli] != NULL)
+		strcpy(data, buffer + len);
+
+		for (int nCli = 0; nCli < MAX_PEERS; nCli++)
 		{
-			currPeers[cPeers++] = peers[nCli];
+			if (peers[nCli] != NULL)
+			{
+				currPeers[cPeers++] = peers[nCli];
+			}
+		}
+
+		LOGINFO("Current peers: %d\n", cPeers);
+		int block = strlen(data) / cPeers;
+		int curr = 0;
+		string fName(fileName);
+
+		for (int nCli = 0; nCli < cPeers; nCli++)
+		{
+			char tBuffer[MAX_BUFFER_SIZE];
+			strcpy(tBuffer, fileName);
+			strcat(tBuffer, "\n");
+			strncat(tBuffer, data + curr, block);
+			sockServer.Send(currPeers[nCli]->sockFD, tBuffer, strlen(tBuffer), 0);
+			curr += block;
+			locTable[fName].push_back(currPeers[nCli]->IP);
+			LOGINFO("Sent to %d: %s\n", currPeers[nCli]->sockFD, tBuffer);
+			bzero(tBuffer, MAX_BUFFER_SIZE);
+		}
+
+		LOGINFO("File %s is stored at:\n", fileName);
+		for (string ip : locTable[fName])
+		{
+			LOGINFO("%s\n", ip.c_str());
 		}
 	}
-
-	LOGINFO("Current peers: %d\n", cPeers);
-	int block = strlen(data) / cPeers;
-	int curr = 0;
-	string fName(fileName);
-
-	for (int nCli = 0; nCli < cPeers; nCli++)
+	else
 	{
-		char tBuffer[MAX_BUFFER_SIZE];
-		strcpy(tBuffer, fileName);
-		strcat(tBuffer, "\n");
-		strncat(tBuffer, data + curr, block);
-		sockServer.Send(currPeers[nCli]->sockFD, tBuffer, strlen(tBuffer), 0);
-		curr += block;
-		locTable[fName].push_back(currPeers[nCli]->IP);
-		LOGINFO("Sent to %d: %s\n", currPeers[nCli]->sockFD, tBuffer);
-		bzero(tBuffer, MAX_BUFFER_SIZE);
-	}
-
-	LOGINFO("File %s is stored at:\n", fileName);
-	for (string ip : locTable[fName])
-	{
-		LOGINFO("%s\n", ip.c_str());
+		sockServer.Send(peers[peerID]->sockFD, fileName, strlen(fileName), 0);
 	}
 
 	bzero(buffer, MAX_BUFFER_SIZE);
@@ -180,15 +177,10 @@ int main(int argc, char* args[])
 					close(socketDesc);
 					peers[nPeer] = NULL;
 				}
-				else if (strcmp(buffer, "GET\n") == 0)
-				{
-					LOGINFO("Client %d requesting for file\n", nPeer);
-					retrieveFile(sockServer, nPeer);
-				}
 				else
 				{
 					LOGINFO("Peer %d sending file: %s\n", nPeer, buffer);
-					sendToAllPeers(sockServer);
+					peerInteraction(sockServer, nPeer);
 				}
 			}
 		}
